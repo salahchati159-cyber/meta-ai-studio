@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meta AI Studio</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #131314; color: #e3e3e3; min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; }
+
+    /* الشريط العلوي */
+    header { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; border-bottom: 1px solid #2d2f31; background: #18191a; }
+    .meta-brand { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: bold; color: #e3e3e3; }
+    .meta-logo-icon { font-size: 26px; color: #0866ff; }
+    .quota-badge { background: #1e1f20; border: 1px solid #444746; color: #a8c7fa; padding: 6px 14px; border-radius: 20px; font-size: 13px; }
+
+    /* قسم الترحيب الرئيسي */
+    #main-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; max-width: 800px; width: 90%; margin: 20px auto; }
+    .welcome-container { text-align: center; margin-bottom: 30px; }
+    .welcome-title { font-size: 36px; font-weight: bold; background: linear-gradient(90deg, #4285f4, #9b51e0, #e91e63); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
+    .welcome-sub { font-size: 16px; color: #c4c7c5; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+    /* بطاقات الاقتراحات السريعة */
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; width: 100%; margin-top: 25px; }
+    .card { background: #1e1f20; border: 1px solid #2d2f31; padding: 16px; border-radius: 12px; cursor: pointer; transition: 0.2s; text-align: right; }
+    .card:hover { background: #2a2b2e; border-color: #444746; }
+    .card-title { font-size: 14px; color: #e3e3e3; }
+    .card-icon { font-size: 20px; margin-top: 10px; text-align: left; }
+
+    /* منطقة الدردشة */
+    #chat-stream { width: 100%; display: none; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+    .chat-bubble { padding: 14px 18px; border-radius: 16px; max-width: 85%; font-size: 14px; line-height: 1.6; }
+    .user-bubble { background: #2b2c2e; color: #e3e3e3; align-self: flex-start; }
+    .ai-bubble { background: #1e1f20; border: 1px solid #2d2f31; color: #c4c7c5; align-self: flex-end; width: 100%; }
+    .code-box { background: #0d0e10; border: 1px solid #2d2f31; padding: 10px; border-radius: 8px; font-family: monospace; color: #a8c7fa; margin-top: 8px; direction: ltr; text-align: left; font-size: 13px; }
+
+    /* صندوق الإدخال السفلي */
+    .input-container { padding: 15px; background: #131314; display: flex; flex-direction: column; align-items: center; border-top: 1px solid #2d2f31; }
+    .input-wrapper { width: 90%; max-width: 800px; display: flex; flex-direction: column; gap: 8px; }
+    .warning-banner { background: #3c1e1e; border: 1px solid #f2b8b5; color: #f2b8b5; padding: 8px 14px; border-radius: 10px; font-size: 12px; display: none; }
+
+    .gemini-input-box { background: #1e1f20; border: 1px solid #444746; border-radius: 28px; padding: 8px 16px; display: flex; align-items: center; gap: 10px; }
+    textarea { flex: 1; background: transparent; border: none; color: #e3e3e3; font-size: 15px; outline: none; resize: none; height: 32px; line-height: 32px; }
+
+    .action-btn { background: #0866ff; color: white; border: none; border-radius: 20px; padding: 8px 14px; font-size: 13px; font-weight: bold; cursor: pointer; }
+    .action-btn:hover { background: #0052cc; }
+    .btn-video { background: #107c41; }
+    .btn-video:hover { background: #0b5c30; }
+
+    /* أيقونة الإبلاغ 🚩 والنوافذ المنبثقة */
+    #report-flag { position: fixed; bottom: 20px; left: 20px; font-size: 22px; cursor: pointer; z-index: 9999; background: #1e1f20; border: 1px solid #444746; padding: 10px; border-radius: 50%; }
+    #report-flag:hover { background: #a80710; }
+    #report-modal { display: none; position: fixed; bottom: 75px; left: 20px; z-index: 9999; background: #1e1f20; padding: 16px; border-radius: 14px; width: 280px; border: 1px solid #444746; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
+    #report-modal select, #report-modal textarea { width: 100%; margin-bottom: 10px; padding: 8px; border-radius: 6px; background: #131314; color: #e3e3e3; border: 1px solid #444746; outline: none; }
+  </style>
+</head>
+<body>
+
+  <!-- زر العلم الأحمر للإبلاغ 🚩 -->
+  <div id="report-flag" onclick="toggleReportModal()" title="إبلاغ للمشرف البشري">🚩</div>
+
+  <!-- نافذة البلاغات وتظلمات الحظر -->
+  <div id="report-modal">
+    <h4 style="margin-bottom:10px; color:#e3e3e3;">🚨 مركز الأمان والمراجعة</h4>
+    <select id="reportType">
+      <option value="report_user">تقديم بلاغ عن محتوى غير لائق</option>
+      <option value="appeal_ban">طلب استرجاع حساب محظور (مراجعة بشرية)</option>
+    </select>
+    <textarea id="reportDetails" rows="3" placeholder="اكتب التفاصيل هنا..."></textarea>
+    <button onclick="submitHumanReport()" style="background:#a80710; color:white; border:none; padding:8px; width:100%; border-radius:6px; font-weight:bold; cursor:pointer;">إرسال للمشرفين البشر</button>
+  </div>
+
+  <!-- الشريط العلوي -->
+  <header>
+    <div class="meta-brand">
+      <span class="meta-logo-icon">∞</span> Meta AI Studio
+    </div>
+    <div class="quota-badge">🎬 3 فيديوهات مجانية شهرياً لكل حساب</div>
+  </header>
+
+  <!-- محتوى الواجهة الرئيسي -->
+  <div id="main-container">
+    <div id="welcome-block" class="welcome-container">
+      <div class="welcome-title">مرحباً بك مع Meta AI</div>
+      <div class="welcome-sub">
+        <span style="font-size: 20px; color:#0866ff;">∞</span> Meta ترحب بكم في عصر الذكاء الاصطناعي التفاعلي
+      </div>
+
+      <div class="cards-grid">
+        <div class="card" onclick="quickPrompt('اكتب كود Python لإنشاء لعبة بسيطة')">
+          <div class="card-title">اكتب كود برمجي بلغة Python</div>
+          <div class="card-icon">💻</div>
+        </div>
+        <div class="card" onclick="quickPrompt('مدينة مستقبلية تحت الماء بتقنية 8K')">
+          <div class="card-title">توليد صورة واقعية 3D</div>
+          <div class="card-icon">🎨</div>
+        </div>
+        <div class="card" onclick="quickPrompt('مشهد افتراضي لطيران فوق الجبال')">
+          <div class="card-title">إنشاء فيديو ذكي (Freemium)</div>
+          <div class="card-icon">🎥</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="chat-stream"></div>
+  </div>
+
+  <!-- صندوق الإدخال السفلي -->
+  <div class="input-container">
+    <div class="input-wrapper">
+      <div id="warningBanner" class="warning-banner">
+        ⚠️ **تحذير أمني تلقائي**: تم اكتشاف كلمات غير ملائمة! يرجى مسح الكلام الفاحش لتفادي حظر حسابك تلقائياً.
+      </div>
+
+      <div class="gemini-input-box">
+        <textarea id="userInput" placeholder="اسأل Meta AI شيئاً، اطلب كوداً، أو أنشئ وسائط..."></textarea>
+        <button onclick="processAI('text')" class="action-btn">إرسال 💻</button>
+        <button onclick="processAI('image')" class="action-btn" style="background:#2b2c2e;">صورة 🎨</button>
+        <button onclick="processAI('video')" class="action-btn btn-video">فيديو 🎥</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BANNED_WORDS = ["تهديد", "فاحش", "إباحي", "شتم", "حظر"];
+
+    function toggleReportModal() {
+      const m = document.getElementById('report-modal');
+      m.style.display = m.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function quickPrompt(text) {
+      document.getElementById('userInput').value = text;
+    }
+
+    function processAI(type) {
+      const input = document.getElementById('userInput');
+      const val = input.value.trim();
+      const warning = document.getElementById('warningBanner');
+      const welcome = document.getElementById('welcome-block');
+      const chat = document.getElementById('chat-stream');
+
+      if (!val) return;
+
+      const hasBadWord = BANNED_WORDS.some(word => val.includes(word));
+      if (hasBadWord) {
+        warning.style.display = 'block';
+        return;
+      } else {
+        warning.style.display = 'none';
+      }
+
+      welcome.style.display = 'none';
+      chat.style.display = 'flex';
+
+      chat.innerHTML += `<div class="chat-bubble user-bubble">${val}</div>`;
+
+      if (type === 'text') {
+        chat.innerHTML += `
+          <div class="chat-bubble ai-bubble">
+            إليك الاستجابة البرمجية الذكية من Meta AI:
+            <div class="code-box">// Meta AI Code Output<br>function welcomeMeta() {<br>&nbsp;&nbsp;console.log("Welcome to Meta AI Space!");<br>}</div>
+          </div>`;
+      } else if (type === 'image') {
+        chat.innerHTML += `<div class="chat-bubble ai-bubble">🎨 تم توليد الصورة بنجاح بناءً على طلبك: "${val}"</div>`;
+      } else if (type === 'video') {
+        chat.innerHTML += `<div class="chat-bubble ai-bubble">🎥 تم استهلاك 1 من أصل 3 فيديوهات مجانية لهذا الشهر. جاري معالجة الفيديو...</div>`;
+      }
+
+      input.value = '';
+    }
+
+    function submitHumanReport() {
+      const details = document.getElementById('reportDetails').value;
+      if (!details) return alert("يرجى كتابة التفاصيل أولاً.");
+      alert("تم إرسال الطلب بنجاح إلى فريق المشرفين البشر للمراجعة.");
+      document.getElementById('report-modal').style.display = 'none';
+      document.getElementById('reportDetails').value = '';
+    }
+  </script>
+</body>
+</html>
